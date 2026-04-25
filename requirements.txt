@@ -1,0 +1,13 @@
+langchain
+langchain_ollama
+langchain-community
+langchain-classic
+pypdf
+faiss-cpu
+requests
+python-dotenv
+tiktoken
+langchainhub
+fastapi
+uvicorn
+pydantic
