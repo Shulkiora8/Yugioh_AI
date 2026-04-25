@@ -1,99 +1,24 @@
-# --- Python ---
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-.venv/
-venv/
-ENV/
-env/
+# Logs
+logs
 *.log
-api.log
-.pytest_cache/
-.tox/
-.coverage
-.cache/
-nosetests.xml
-coverage.xml
-*.cover
-*.pyo
-
-# --- Node / React ---
-node_modules/
-frontend/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-.pnp
-.pnp.js
-frontend/dist/
-frontend/dist-ssr/
-frontend/coverage/
-.eslintcache
-.stylelintcache
-frontend/.next/
-frontend/out/
+lerna-debug.log*
 
-# --- Database / Data ---
-*.db
-*.db-journal
-*.sqlite3
-yugioh_helper.db
-decks_data.json
-*.csv
-*.xlsx
-*.sql
+node_modules
+dist
+dist-ssr
+*.local
 
-# --- Environment Variables ---
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.env
-.flaskenv
-
-# --- IDE / Editor ---
-.vscode/
+# Editor directories and files
+.vscode/*
 !.vscode/extensions.json
-!.vscode/launch.json
-.idea/
-*.swp
-*.swo
+.idea
+.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
-*.sublime-project
-*.sublime-workspace
-
-# --- OS ---
-.DS_Store
-.DS_Store?
-._*
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# --- Project Specific Large Files ---
-SD_RuleBook_EN_10.pdf
-wallpaper.png
+*.sw?
