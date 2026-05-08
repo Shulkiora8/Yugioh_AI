@@ -123,6 +123,15 @@ body {
   align-self: flex-start;
 }
 
+.chat-msg-image {
+  width: 100%;
+  max-width: 200px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  display: block;
+}
+
 .chat-input-area {
   padding: 1rem;
   border-top: 1px solid var(--border);
@@ -709,6 +718,25 @@ body {
   padding: 10px 14px;
   color: white;
   font-size: 0.85rem;
+}
+
+.image-upload-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.image-upload-btn:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
 }
 
 /* FLOATING TOGGLE */

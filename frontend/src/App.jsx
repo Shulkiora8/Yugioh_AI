@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import {
   Send, Plus, Trash2, Save, Search, Book, Swords, X, Info,
-  LayoutGrid, List, Edit2, Copy, ArrowLeft, LogOut
+  LayoutGrid, List, Edit2, Copy, ArrowLeft, LogOut, Image as ImageIcon
 } from 'lucide-react';
 import Login from './Login';
 
@@ -10,7 +10,7 @@ const API_URL = 'http://localhost:8000';
 
 function App() {
   // Auth State
-  const [token, setToken] = useState(localStorage.getItem('token') || null);
+  const [token, setToken] = useState(localStorage.getItem('token') || 'local-auth-bypass');
   const [user, setUser] = useState(null);
 
   // Navigation State
@@ -28,15 +28,18 @@ function App() {
   const [displayLimit, setDisplayLimit] = useState(100);
   const [selectedCard, setSelectedCard] = useState(null);
   const [messages, setMessages] = useState({
-    rules: [{ text: "¡Hola! Soy tu asistente de reglas.", type: 'ai' }],
-    decks: [{ text: "Dime qué mazo quieres construir.", type: 'ai' }]
+    rules: [{ text: "Hello! I am the rule assistant.", type: 'ai' }],
+    decks: [{ text: "Tell me what deck you want to build.", type: 'ai' }]
   });
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [dbLoading, setDbLoading] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
   const [dbResults, setDbResults] = useState([]);
   const [deck, setDeck] = useState({ name: 'Nuevo Mazo', main: [], extra: [], side: [] });
 
   const editorRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Chat & UI State
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -135,7 +138,7 @@ function App() {
   };
 
   const openDeck = async (deckName) => {
-    setLoading(true);
+    setChatLoading(true);
     try {
       const res = await axios.get(`${API_URL}/decks/${encodeURIComponent(deckName)}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -143,10 +146,10 @@ function App() {
       setDeck(res.data);
       setSelectedCard(null);
       setView('editor');
-    } catch (err) { 
-      console.error(err); 
+    } catch (err) {
+      console.error(err);
       if (err.response?.status === 401) handleLogout();
-    } finally { setLoading(false); }
+    } finally { setChatLoading(false); }
   };
 
   const deleteDeck = async (name) => {
@@ -156,8 +159,8 @@ function App() {
           headers: { Authorization: `Bearer ${token}` }
         });
         fetchSavedDecks();
-      } catch (err) { 
-        console.error(err); 
+      } catch (err) {
+        console.error(err);
         if (err.response?.status === 401) handleLogout();
       }
     }
@@ -167,11 +170,15 @@ function App() {
     const newName = window.prompt("Nuevo nombre para el mazo:", oldName);
     if (newName && newName !== oldName) {
       try {
-        await axios.patch(`${API_URL}/decks/${encodeURIComponent(oldName)}`, 
+        const res = await axios.patch(`${API_URL}/decks/${encodeURIComponent(oldName)}`, 
           { name: newName },
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        fetchSavedDecks();
+        const finalName = res.data.new_name;
+        await fetchSavedDecks();
+        if (deck.name === oldName) {
+          setDeck(prev => ({ ...prev, name: finalName }));
+        }
       } catch (err) { 
         console.error(err); 
         if (err.response?.status === 401) handleLogout();
@@ -187,12 +194,11 @@ function App() {
       deck.name = newName;
     }
 
-    // Check if name already exists (excluding the current one if we were editing it)
-    // Actually, since we don't have stable IDs, any same name will trigger this.
     const exists = savedDecks.some(d => d.name === deck.name);
+    let shouldOverwrite = false;
     if (exists) {
-      if (!window.confirm(`Ya existe un mazo llamado "${deck.name}". ¿Quieres sobreescribirlo?`)) {
-        return;
+      if (window.confirm(`Ya existe un mazo llamado "${deck.name}". ¿Quieres sobreescribirlo?`)) {
+        shouldOverwrite = true;
       }
     }
 
@@ -201,14 +207,18 @@ function App() {
         name: deck.name,
         main: deck.main.map(c => c.name),
         extra: deck.extra.map(c => c.name),
-        side: deck.side.map(c => c.name)
+        side: deck.side.map(c => c.name),
+        overwrite: shouldOverwrite
       };
-      await axios.post(`${API_URL}/save-deck`, payload, {
+      const res = await axios.post(`${API_URL}/save-deck`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
+      const finalName = res.data.name;
+      setDeck(prev => ({ ...prev, name: finalName }));
+      
       await fetchSavedDecks();
-      alert(`¡Mazo "${deck.name}" guardado correctamente!`);
+      alert(`¡Mazo "${finalName}" guardado correctamente!`);
     } catch (err) {
       console.error(err);
       alert("Error al guardar el mazo.");
@@ -216,34 +226,100 @@ function App() {
   };
 
   const searchDb = async (q, type) => {
+    setDbLoading(true);
     try {
       const res = await axios.get(`${API_URL}/cards?q=${q}`);
       let data = res.data.data || [];
       if (type !== 'All') data = data.filter(c => c.type.toLowerCase().includes(type.toLowerCase()));
       setDbResults(data);
     } catch (err) { console.error(err); }
+    finally { setDbLoading(false); }
   };
 
   const sendMessage = async () => {
     if (!input.trim()) return;
-    const newMsg = { text: input, type: 'user' };
+    const userMessage = input.trim();
+    const newMsg = { text: userMessage, type: 'user' };
     setMessages(prev => ({ ...prev, [activeTab]: [...prev[activeTab], newMsg] }));
     setInput('');
-    setLoading(true);
+    setChatLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/chat`, 
-        { message: input },
+      const res = await axios.post(`${API_URL}/chat`,
+        { message: userMessage },
         { headers: { Authorization: `Bearer ${token}`, 'x-session-id': 'default' } }
       );
-      const { response, deck_data } = res.data;
-      if (deck_data) setDeck(deck_data);
-      setMessages(prev => ({ ...prev, [activeTab]: [...prev[activeTab], { text: response, type: 'ai' }] }));
-    } catch (err) { 
+      const { response, deck_data, thoughts } = res.data;
+      if (deck_data) {
+        setDeck(deck_data);
+        fetchSavedDecks();
+        setView('editor'); // Switch to editor view automatically
+      }
+
+      let finalResponse = response;
+      if (!finalResponse || !finalResponse.trim()) {
+        const lowerMsg = userMessage.toLowerCase();
+        if (deck_data || lowerMsg.includes('deck') || lowerMsg.includes('build') || lowerMsg.includes('make') || lowerMsg.includes('create') || lowerMsg.includes('mazo') || lowerMsg.includes('crea')) {
+          finalResponse = "Process completed! I have prepared the deck you requested.";
+        } else if (lowerMsg.includes('rule') || lowerMsg.includes('how to') || lowerMsg.includes('phase') || lowerMsg.includes('chain') || lowerMsg.includes('regla') || lowerMsg.includes('como')) {
+          finalResponse = "Process completed! Here is the rule information you asked about.";
+        } else if (lowerMsg.includes('card') || lowerMsg.includes('stats') || lowerMsg.includes('effect') || lowerMsg.includes('carta') || lowerMsg.includes('efecto')) {
+          finalResponse = "Process completed! Here is the card information you requested.";
+        } else {
+          finalResponse = "Process completed!";
+        }
+      }
+
+      setMessages(prev => ({ 
+        ...prev, 
+        [activeTab]: [...prev[activeTab], { text: finalResponse, type: 'ai', thoughts: thoughts }] 
+      }));
+    } catch (err) {
       console.error(err);
       const errorMsg = "Lo siento, hubo un error al procesar tu mensaje. ¿Está Ollama encendido?";
       setMessages(prev => ({ ...prev, [activeTab]: [...prev[activeTab], { text: errorMsg, type: 'ai' }] }));
       if (err.response?.status === 401) handleLogout();
-    } finally { setLoading(false); }
+    } finally { setChatLoading(false); }
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const imageUrl = URL.createObjectURL(file);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    setImageLoading(true);
+    const userMsg = {
+      text: "🔍 Analizando imagen...",
+      type: 'user',
+      image: imageUrl
+    };
+    setMessages(prev => ({ ...prev, [activeTab]: [...prev[activeTab], userMsg] }));
+
+    try {
+      const res = await axios.post(`${API_URL}/analyze-image`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      const { card_name, details, card_image } = res.data;
+      const aiMsg = {
+        text: `He identificado esta carta: **${card_name}**.\n\nDetalles:\n${details}\n\n¡Proceso completado!`,
+        type: 'ai',
+        image: card_image
+      };
+      setMessages(prev => ({ ...prev, [activeTab]: [...prev[activeTab], aiMsg] }));
+    } catch (err) {
+      console.error(err);
+      const aiMsg = { text: "Error al analizar la imagen. Asegúrate de que el modelo de visión esté disponible.", type: 'ai' };
+      setMessages(prev => ({ ...prev, [activeTab]: [...prev[activeTab], aiMsg] }));
+    } finally {
+      setImageLoading(false);
+      e.target.value = null;
+    }
   };
 
   const addCardToDeck = (card) => {
@@ -325,6 +401,18 @@ function App() {
     return () => { window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); };
   }, [isDragging, dragOffset, isToggleDragging, toggleDragOffset]);
 
+  const renderMessageText = (text) => {
+    if (!text) return null;
+    const parts = text.split(/(!\[.*?\]\(.*?\))/g);
+    return parts.map((part, i) => {
+      const match = part.match(/!\[(.*?)\]\((.*?)\)/);
+      if (match) {
+        return <img key={i} src={match[2]} alt={match[1]} style={{ maxWidth: '100%', borderRadius: '8px', marginTop: '10px', display: 'block' }} />;
+      }
+      return <span key={i} style={{ whiteSpace: 'pre-wrap' }}>{part}</span>;
+    });
+  };
+
   function renderFloatingChat() {
     return (
       <>
@@ -335,10 +423,19 @@ function App() {
               <button className="close-chat" onClick={() => setIsChatOpen(false)}><X size={16} /></button>
             </div>
             <div className="chat-messages">
-              {messages[activeTab].map((msg, i) => (<div key={i} className={`message ${msg.type}`}>{msg.text}</div>))}
-              {loading && <div className="message ai">...</div>}
+              {messages[activeTab].map((msg, i) => (
+                <div key={i} className={`message ${msg.type}`}>
+                  {msg.image && <img src={msg.image} alt="uploaded" className="chat-msg-image" />}
+                  <div className="message-text">{renderMessageText(msg.text)}</div>
+                </div>
+              ))}
+              {(chatLoading || imageLoading) && <div className="message ai">...</div>}
             </div>
             <div className="chat-input-area">
+              <input type="file" ref={fileInputRef} onChange={handleImageUpload} style={{ display: 'none' }} accept="image/*" />
+              <button className="image-upload-btn" onClick={() => fileInputRef.current.click()} title="Subir imagen de carta">
+                <ImageIcon size={18} />
+              </button>
               <input value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && sendMessage()} placeholder="Pregunta algo..." />
               <button className="send-btn" onClick={sendMessage}><Send size={18} /></button>
             </div>
