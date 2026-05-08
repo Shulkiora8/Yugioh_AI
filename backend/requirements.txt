@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+requests
+langchain
+langchain-community
+langchain-ollama
+langchain-chroma
+langchain-classic
+ollama
+python-jose[cryptography]
+bcrypt
+python-dotenv
+faiss-cpu
+pypdf
+chromadb
+pydantic
+pydantic-settings
