@@ -53,16 +53,6 @@ frontend/coverage/
 frontend/.next/
 frontend/out/
 
-# --- Database / Data ---
-*.db
-*.db-journal
-*.sqlite3
-yugioh_helper.db
-decks_data.json
-*.csv
-*.xlsx
-*.sql
-
 # --- Environment Variables ---
 .env
 .env.local
@@ -94,6 +84,4 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# --- Project Specific Large Files ---
-SD_RuleBook_EN_10.pdf
-wallpaper.png
+backend/imagenes/

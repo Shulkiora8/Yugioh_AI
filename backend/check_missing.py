@@ -1,12 +1,15 @@
 import os
+from pathlib import Path
 from database import get_connection
+
+BASE_DIR = Path(__file__).resolve().parent
 
 conn = get_connection()
 cursor = conn.cursor()
 cursor.execute("SELECT name FROM card_cache")
 db_names = {r[0] for r in cursor.fetchall()}
 
-files = os.listdir("imagenes")
+files = os.listdir(BASE_DIR / "imagenes")
 missing = []
 for f in files:
     if f.endswith('.jpg'):

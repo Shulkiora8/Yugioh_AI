@@ -29,9 +29,9 @@ def init_all_rag(rulebook_path: str) -> dict:
         rule_retriever = setup_rag(rulebook_path)
         if rule_retriever:
             tools_module._rule_retriever = rule_retriever
-            print("[RAG] ✅ Rulebook RAG loaded.")
+            print("[RAG] [OK] Rulebook RAG loaded.")
     except Exception as e:
-        print(f"[RAG] ❌ Error loading Rulebook RAG: {e}")
+        print(f"[RAG] [ERROR] Error loading Rulebook RAG: {e}")
         rule_retriever = None
 
     # --- Card RAG (FAISS) ---
@@ -40,11 +40,11 @@ def init_all_rag(rulebook_path: str) -> dict:
         card_retriever = setup_card_rag()
         if card_retriever:
             tools_module._card_retriever = card_retriever
-            print("[RAG] ✅ Card RAG loaded.")
+            print("[RAG] [OK] Card RAG loaded.")
         else:
-            print("[RAG] ⚠️ Card RAG index not found — card visual search disabled.")
+            print("[RAG] [WARNING] Card RAG index not found — card visual search disabled.")
     except Exception as e:
-        print(f"[RAG] ❌ Error loading Card RAG: {e}")
+        print(f"[RAG] [ERROR] Error loading Card RAG: {e}")
         card_retriever = None
 
     # --- Visual RAG (ChromaDB) ---
@@ -52,11 +52,11 @@ def init_all_rag(rulebook_path: str) -> dict:
     try:
         visual_retriever = get_visual_retriever()
         if visual_retriever:
-            print("[RAG] ✅ Visual RAG loaded.")
+            print("[RAG] [OK] Visual RAG loaded.")
         else:
-            print("[RAG] ⚠️ Visual RAG not available.")
+            print("[RAG] [WARNING] Visual RAG not available.")
     except Exception as e:
-        print(f"[RAG] ❌ Error loading Visual RAG: {e}")
+        print(f"[RAG] [ERROR] Error loading Visual RAG: {e}")
         visual_retriever = None
 
     # --- Image-to-Image Visual RAG (OpenCLIP ChromaDB) ---
@@ -64,11 +64,11 @@ def init_all_rag(rulebook_path: str) -> dict:
     try:
         image_rag_collection = setup_image_rag()
         if image_rag_collection:
-            print("[RAG] ✅ Image RAG loaded.")
+            print("[RAG] [OK] Image RAG loaded.")
         else:
-            print("[RAG] ⚠️ Image RAG not available.")
+            print("[RAG] [WARNING] Image RAG not available.")
     except Exception as e:
-        print(f"[RAG] ❌ Error loading Image RAG: {e}")
+        print(f"[RAG] [ERROR] Error loading Image RAG: {e}")
         image_rag_collection = None
 
     return {

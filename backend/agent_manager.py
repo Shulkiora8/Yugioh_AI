@@ -24,15 +24,41 @@ AGENT_PREFIX = """You are a Yu-Gi-Oh! expert AI assistant. Answer in the same la
     Use tools to find information. After getting a tool's result, ALWAYS write a detailed explanation for the user based on what you found.
 
     Available tools and when to use them:
-    - card_search: ALWAYS use this FIRST when the user asks for a specific card, its stats, its effects, or if they ask to identify a card based on what its effect does (e.g., "what card lets me draw 2 cards?"). IMPORTANT: The database is in English. Always translate the search query to English keywords (e.g., "draw 2 cards", "white dragon") before calling this tool. NEVER guess card effects without searching.
-    - rule_lookup: When the user asks about game rules or mechanics.
-    - search_local_decks: ALWAYS use this FIRST when the user asks for a deck by name, archetype, or strategy (e.g., "Branded deck", "Dark Magician deck", "Yummy deck", "Hero").
-    - generate_custom_deck: ONLY use this as a fallback if search_local_decks fails, or if the user asks for a generic theme (e.g., "Water deck", "Dragon deck").
+    - card_search: Use this to find cards by NAME or EFFECT text (e.g., "Blue-Eyes White Dragon", "draw 2 cards"). ALWAYS translate keywords to English.
+    - visual_card_search: Use this ONLY when the user describes what a card LOOKS like (e.g., "a dragon with blue eyes", "a warrior in red armor") but doesn't know the name or effect.
+    - rule_lookup: Use this for game rules, phases, or mechanics.
+    - search_local_decks: Use this for decks by archetype or name (e.g., "Branded", "Dark Magician").
+    - generate_custom_deck: Use this to build a new deck based on a broad theme (e.g., "Dragon", "Water").
+"""
 
-    IMPORTANT: If a tool returns an 'Image' URL, you MUST include that image in your final answer using Markdown syntax: ![Card Name](URL).
+AGENT_SUFFIX = """
+    To use a tool, you MUST use the following format:
 
-    IMPORTANT: After using a tool and receiving an Observation, you MUST provide a Final Answer with the full information. Never leave the answer empty.
-    """
+    Thought: Do I need to use a tool? Yes
+    Action: 
+    ```json
+    {{
+      "action": "tool_name",
+      "action_input": {{
+        "parameter_name": "value"
+      }}
+    }}
+    ```
+    Observation: the result of the tool
+
+    When you have a final answer for the user, or if you do not need to use a tool, you MUST use the following format:
+
+    Thought: Do I need to use a tool? No
+    Action:
+    ```json
+    {{
+      "action": "Final Answer",
+      "action_input": "Your final response to the user here, in the same language they used."
+    }}
+    ```
+
+    IMPORTANT: Always provide a detailed Final Answer. If you generate a deck, explain to the user that it's ready and where they can find it.
+"""
 
 
 def create_agent(session_id: str) -> AgentExecutor:
@@ -46,7 +72,10 @@ def create_agent(session_id: str) -> AgentExecutor:
         tools,
         llm,
         agent=AgentType.STRUCTURED_CHAT_ZERO_SHOT_REACT_DESCRIPTION,
-        agent_kwargs={"prefix": AGENT_PREFIX},
+        agent_kwargs={
+            "prefix": AGENT_PREFIX,
+            "suffix": AGENT_SUFFIX
+        },
         memory=memory,
         verbose=True,
         handle_parsing_errors=True,

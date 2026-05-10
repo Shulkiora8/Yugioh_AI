@@ -136,9 +136,9 @@ def chat(request: ChatRequest, req: Request, current_user: dict = Depends(get_cu
                 # Detect errors or warnings in the observation
                 lower_obs = obs_str.lower()
                 if any(word in lower_obs for word in ["error", "failed", "exception", "not available", "limit reached"]):
-                    error_msg = f"--- ⚠️ AGENT WARNING/ERROR --- \nAction: {action.tool}\nObservation: {obs_str}\n---------------------------"
+                    error_msg = f"--- [WARNING] AGENT WARNING/ERROR --- \nAction: {action.tool}\nObservation: {obs_str}\n---------------------------"
                     print(error_msg) # Print to terminal as requested
-                    thought_entry = "⚠️ [SYSTEM ALERT: ERROR OR WARNING DETECTED]\n" + thought_entry
+                    thought_entry = "[WARNING] [SYSTEM ALERT: ERROR OR WARNING DETECTED]\n" + thought_entry
                 
                 thoughts.append(thought_entry)
             full_thoughts = "\n\n".join(thoughts)
@@ -362,12 +362,12 @@ def optimize_image(image_bytes, max_size=(1024, 1024)):
         img.save(buf, format="JPEG", quality=85)
         return buf.getvalue()
     except Exception as e:
-        print(f"[IMAGE AGENT] ⚠️ Error optimizando imagen: {e}")
+        print(f"[IMAGE AGENT] [WARNING] Error optimizando imagen: {e}")
         return image_bytes
 
 @app.post("/analyze-image")
 def analyze_image(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
-    print(f"\n[IMAGE AGENT] 📸 Recibida imagen: {file.filename}")
+    print(f"\n[IMAGE AGENT] [INFO] Recibida imagen: {file.filename}")
     try:
         raw_contents = file.file.read()
         
@@ -379,7 +379,7 @@ def analyze_image(file: UploadFile = File(...), current_user: dict = Depends(get
         vision_description = "Búsqueda directa por imagen (OpenCLIP)"
         
         if image_rag_collection:
-            print("[IMAGE AGENT] 🖼️ Usando OpenCLIP Image RAG para búsqueda directa...")
+            print("[IMAGE AGENT] [INFO] Usando OpenCLIP Image RAG para búsqueda directa...")
             temp_path = os.path.join(BASE_DIR, "temp_upload.jpg")
             with open(temp_path, "wb") as f:
                 f.write(raw_contents)
@@ -393,7 +393,7 @@ def analyze_image(file: UploadFile = File(...), current_user: dict = Depends(get
                 if results and results["metadatas"] and results["metadatas"][0]:
                     best_match = results["metadatas"][0][0]
                     clean_name = best_match.get("name", "Unknown")
-                    print(f"[IMAGE AGENT] ✅ OpenCLIP Match: {clean_name}")
+                    print(f"[IMAGE AGENT] [OK] OpenCLIP Match: {clean_name}")
                     
                     local_img = best_match.get("image_path")
                     if local_img:
@@ -405,14 +405,14 @@ def analyze_image(file: UploadFile = File(...), current_user: dict = Depends(get
                     else:
                         rag_details = f"Name: {clean_name}\nIdentificado vía Image RAG."
             except Exception as e:
-                print(f"[IMAGE AGENT] ❌ Error en Image RAG: {e}")
+                print(f"[IMAGE AGENT] [ERROR] Error en Image RAG: {e}")
             finally:
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
                     
         # Fallback a moondream si OpenCLIP falló o no está inicializado
         if clean_name == "Unknown":
-            print(f"[IMAGE AGENT] 🤖 Fallback a modelo de visión ({VISION_MODEL_NAME})...")
+            print(f"[IMAGE AGENT] [INFO] Fallback a modelo de visión ({VISION_MODEL_NAME})...")
             contents = optimize_image(raw_contents)
             import ollama
             
@@ -426,12 +426,12 @@ def analyze_image(file: UploadFile = File(...), current_user: dict = Depends(get
             except Exception as ollama_err:
                 err_msg = str(ollama_err)
                 if "resource limitations" in err_msg.lower() or "500" in err_msg:
-                    print(f"[IMAGE AGENT] ❌ ERROR DE RECURSOS: El modelo de visión ha fallado por falta de memoria.")
+                    print(f"[IMAGE AGENT] [ERROR] ERROR DE RECURSOS: El modelo de visión ha fallado por falta de memoria.")
                 raise ollama_err
 
             vision_description = response.get('response', '').strip()
             
-            print(f"[IMAGE AGENT] 🧠 Buscando carta en Visual RAG de texto (ChromaDB)...")
+            print(f"[IMAGE AGENT] [INFO] Buscando carta en Visual RAG de texto (ChromaDB)...")
             from tools import visual_card_search
             rag_result = visual_card_search.invoke(vision_description)
             
@@ -439,21 +439,21 @@ def analyze_image(file: UploadFile = File(...), current_user: dict = Depends(get
             if "Identified Match:" in rag_result:
                 expert_name = rag_result.split("Identified Match:")[1].split("\n")[0].strip()
             
-            print(f"[IMAGE AGENT] ✅ Resultado Visual RAG: '{expert_name}'")
+            print(f"[IMAGE AGENT] [OK] Resultado Visual RAG: '{expert_name}'")
             exact_card = get_card_by_exact_name(expert_name)
             
             rag_details = rag_result
             clean_name = expert_name
             
             if exact_card:
-                print(f"[IMAGE AGENT] 🎯 Exact Match found in DB for '{expert_name}'. Skipping RAG.")
+                print(f"[IMAGE AGENT] [INFO] Exact Match found in DB for '{expert_name}'. Skipping RAG.")
                 clean_name = exact_card["data"]["name"]
                 rag_details = f"Name: {clean_name}\nDescription: {exact_card['data'].get('desc', '')}"
                 
                 local_img = exact_card.get("local_image")
                 if local_img:
                     local_image_url = f"{API_URL}/local-images/{os.path.basename(local_img)}"
-                    print(f"[IMAGE AGENT] 🏠 Imagen local (Exact): {local_image_url}")
+                    print(f"[IMAGE AGENT] [INFO] Imagen local (Exact): {local_image_url}")
                     
             elif card_retriever:
                 query = f"Name: {expert_name}. Appearance: {vision_description}"
@@ -467,7 +467,7 @@ def analyze_image(file: UploadFile = File(...), current_user: dict = Depends(get
                         local_image_url = f"{API_URL}/local-images/{os.path.basename(local_img)}"
                     rag_details = "\n---\n".join([d.page_content for d in docs[:2]])
 
-        print(f"[IMAGE AGENT] 🔍 Buscando detalles finales para '{clean_name}'...")
+        print(f"[IMAGE AGENT] [INFO] Buscando detalles finales para '{clean_name}'...")
         search_url = f"https://db.ygoprodeck.com/api/v7/cardinfo.php?fname={clean_name}"
         card_data = None
         
@@ -477,9 +477,9 @@ def analyze_image(file: UploadFile = File(...), current_user: dict = Depends(get
                 r_json = r.json()
                 if "data" in r_json:
                     card_data = r_json["data"][0]
-                    print(f"[IMAGE AGENT] ✨ Carta confirmada: {card_data['name']}")
+                    print(f"[IMAGE AGENT] [INFO] Carta confirmada: {card_data['name']}")
         except Exception as e:
-            print(f"[IMAGE AGENT] ⚠️ Error en búsqueda API: {e}")
+            print(f"[IMAGE AGENT] [WARNING] Error en búsqueda API: {e}")
 
         from tools import card_search
         return {
@@ -488,7 +488,7 @@ def analyze_image(file: UploadFile = File(...), current_user: dict = Depends(get
             "card_image": local_image_url or (card_data["card_images"][0]["image_url"] if card_data else None)
         }
     except Exception as e:
-        print(f"[IMAGE AGENT] ❌ ERROR CRÍTICO: {e}")
+        print(f"[IMAGE AGENT] [ERROR] ERROR CRÍTICO: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ import sqlite3
 import json
 import contextvars
 from langchain.tools import tool
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 
 from database import search_decks_by_archetype, save_user_deck, get_connection
 import random
@@ -23,11 +23,24 @@ _card_retriever = None
 _rule_retriever = None
 _visual_retriever = None
 
-@tool
+from pydantic import BaseModel, Field, model_validator
+
+class CardSearchInput(BaseModel):
+    query: str = Field(description="The name of the card or a description of its effect to search for.")
+
+    @model_validator(mode='before')
+    @classmethod
+    def handle_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # If the agent uses 'description' instead of 'query'
+            if "description" in data and "query" not in data:
+                data["query"] = data.pop("description")
+        return data
+
+@tool(args_schema=CardSearchInput)
 def card_search(query: str) -> str:
     """Search for a Yu-Gi-Oh card by exact name, fuzzy name, OR by its effect/description text.
     IMPORTANT: The database is in English. Always translate the user's description into English keywords before searching.
-    Returns card details such as name, type, description, stats, and image URL.
     """
     global _card_retriever
     print(f"Searching for card: {query}")
@@ -78,11 +91,13 @@ def card_search(query: str) -> str:
     except Exception as e:
         return f"Error searching for card: {str(e)}"
 
-@tool
+class SaveDeckInput(BaseModel):
+    deck_name: str = Field(description="The name to give to the saved deck.")
+    card_list: List[str] = Field(description="A list of exact card names to include in the deck.")
+
+@tool(args_schema=SaveDeckInput)
 def save_deck(deck_name: str, card_list: List[str]) -> str:
     """Saves a list of card names to the database.
-    The deck_name is the name of the deck.
-    card_list is a list of strings representing card names.
     """
     global _last_decks
     
@@ -110,11 +125,12 @@ def save_deck(deck_name: str, card_list: List[str]) -> str:
 # Track shown decks per session to avoid repetition
 _shown_decks: dict = {}
 
-@tool
+class SearchLocalDecksInput(BaseModel):
+    query: str = Field(description="The archetype, strategy or part of the deck name to search for (e.g., 'Branded', 'Dark Magician').")
+
+@tool(args_schema=SearchLocalDecksInput)
 def search_local_decks(query: str) -> str:
     """Search for a deck in the local database by name or archetype.
-    Examples of valid queries: 'Branded', 'Dark Magician', 'Yummy', 'Hero', Dracotail.
-    Automatically picks a random deck, saves it to the database, and returns a summary.
     """
     global _shown_decks
 
@@ -168,11 +184,12 @@ def search_local_decks(query: str) -> str:
     except Exception as e:
         return f"Error reading local database: {str(e)}"
 
-@tool
+class GenerateCustomDeckInput(BaseModel):
+    theme: str = Field(description="The theme, race, or attribute to base the deck on (e.g., 'Dragon', 'Water', 'Warrior').")
+
+@tool(args_schema=GenerateCustomDeckInput)
 def generate_custom_deck(theme: str) -> str:
     """Generates a custom, random Yu-Gi-Oh! deck based on a specific theme, race, or attribute.
-    It builds a legal 40-card main deck and 15-card extra deck and saves it.
-    Use this when the user asks for a deck of a certain generic type (e.g. 'Dragon deck', 'Water deck').
     """
     global _last_decks
     
@@ -266,11 +283,21 @@ def generate_custom_deck(theme: str) -> str:
 # Visual RAG Tool
 _visual_retriever = None
 
-@tool
+class VisualCardSearchInput(BaseModel):
+    description: str = Field(description="A detailed visual description of the card (colors, character, background).")
+
+    @model_validator(mode='before')
+    @classmethod
+    def handle_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # If the agent uses 'query' instead of 'description'
+            if "query" in data and "description" not in data:
+                data["description"] = data.pop("query")
+        return data
+
+@tool(args_schema=VisualCardSearchInput)
 def visual_card_search(description: str) -> str:
     """Search for a Yu-Gi-Oh card by its visual appearance (colors, character, background).
-    Input should be a detailed visual description of the card.
-    Returns the most likely card matches based on visual similarity.
     """
     global _visual_retriever
     if _visual_retriever is None:
@@ -294,10 +321,12 @@ def visual_card_search(description: str) -> str:
     except Exception as e:
         return f"Error performing visual search: {e}"
 
-@tool
+class RuleLookupInput(BaseModel):
+    query: str = Field(description="The rule, mechanic, or phase to look up in the rulebook.")
+
+@tool(args_schema=RuleLookupInput)
 def rule_lookup(query: str) -> str:
     """Useful for looking up official Yu-Gi-Oh rules from the rulebook PDF. 
-    Use this for mechanics, phases, or gameplay questions.
     """
     global _rule_retriever
     if not _rule_retriever:

@@ -13,7 +13,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 1 week
 
 # --- AI Models Config ---
-MODEL_NAME = os.getenv("MODEL_NAME", "qwen3.6:35b")
+MODEL_NAME = os.getenv("MODEL_NAME", "qwen2.5:7b")
 VISION_MODEL_NAME = os.getenv("VISION_MODEL_NAME", "moondream")
 
 # --- Path Config ---
