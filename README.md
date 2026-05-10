@@ -30,7 +30,7 @@ El proyecto sigue una arquitectura limpia y modular:
 
 - **Frontend:** React + CSS Vanilla (Premium Design). Interfaz dinámica con visualización de "pensamientos" del agente. Ubicado en la carpeta `/frontend`.
 - **Backend:** FastAPI + LangChain. Toda la lógica del servidor, bases de datos e índices RAG se encuentran en la carpeta `/backend`.
-- **Agente IA:** Ollama (`qwen3.6:35b`) + `Structured Chat Agent`.
+- **Agente IA:** Ollama (`qwen2.5:7b`) + `Structured Chat Agent`.
 
 ---
 
@@ -38,24 +38,22 @@ El proyecto sigue una arquitectura limpia y modular:
 
 ### Requisitos previos
 - [Ollama](https://ollama.ai/) instalado y corriendo.
-- Modelos necesarios: `ollama pull qwen3.6:35b` y `ollama pull moondream`.
+- Modelos necesarios: `ollama pull qwen2.5:7b` y `ollama pull moondream`.
 
 ### Pasos
 1. **Clonar el repositorio:**
    ```bash
    git clone https://github.com/tu-usuario/yugioh-ai-helper.git
-   cd yugioh-ai-helper
+   cd Yugioh-AI
    ```
 2. **Instalar dependencias:**
    ```bash
-   pip install -r backend/requirements.txt
+   pip install -r requirements.txt
    ```
-3. **Configurar el entorno:**
-   Crea un archivo `.env` dentro de `backend/` con:
-   ```env
-   MODEL_NAME=qwen3.6:35b
-   VISION_MODEL_NAME=moondream
-   SECRET_KEY=tu_llave_secreta
+3. **Descargar Imágenes de las cartas**
+   Ejecuta el archivo `download_cards.py` en la carpeta `backend/`.
+   ```bash
+   python backend/download_cards.py
    ```
 4. **Ejecutar el servidor:**
    ```bash
@@ -74,12 +72,10 @@ El proyecto sigue una arquitectura limpia y modular:
 ## Reflexión Final y Desafíos Técnicos
 
 ### 1. Problemas Encontrados y Soluciones
-- **Latencia de Inferencia:** Los modelos de 35B pueden ser lentos en hardware doméstico. Se optimizó el flujo de visión cargando el modelo Moondream solo cuando es necesario y utilizando descripciones textuales para la búsqueda vectorial posterior.
 - **Alucinaciones en Reglas:** El modelo tendía a inventar reglas. Se solucionó mediante **RAG estricto**, forzando al agente a citar el manual y limitando la temperatura del modelo a `0.2`.
-- **Gestión de Contexto:** El historial de chat saturaba la memoria. Se implementó un `ConversationBufferMemory` con limpieza de estados para mantener la relevancia sin perder rendimiento.
 
 ### 2. Limitaciones de Hardware/Software
-- El sistema requiere una GPU con al menos 24GB de VRAM para correr el modelo de 35B con fluidez. Para hardware más modesto, se recomienda cambiar a `llama3:8b`.
+- El sistema requiere una GPU con al menos 24GB de VRAM para correr el modelo de 35B con fluidez. Para hardware más modesto, se recomienda cambiar a `qwen2.5:7b`.
 
 ### 3. Mejoras a Futuro
 - Creacion de seguimiento de usuarios. (Seguidores, amigos)
